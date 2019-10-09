@@ -5,7 +5,7 @@ var angle = 15
 var speed = 500
 var dir = Vector2.ZERO
 var steerAngle
-var currentspeed = 0
+var currentSpeed = 0
 
 func _physics_process(delta):
 	get_input(delta)
@@ -19,21 +19,17 @@ func get_input(delta):
 	if Input.is_action_pressed("ui_left"):
 		turn -= 1
 	steerAngle = turn * deg2rad(angle)
-	#dir = Vector2.ZERO
-	
-
 	
 	if Input.is_action_pressed("ui_up"):
-		#dir = transform.x * speed'
-		currentspeed += speed * delta
+		currentSpeed += speed * delta
 	else:
 		#sjukmotorbroms
-		if(currentspeed > 0):
-			currentspeed -= speed * delta / 2
-		if(currentspeed < 0):
-			currentspeed += speed * delta / 2
+		if(currentSpeed > 0):
+			currentSpeed -= speed * delta / 2
+		if(currentSpeed < 0):
+			currentSpeed += speed * delta / 2
 	if Input.is_action_pressed("ui_down"):
-		currentspeed -= speed * delta * 2
+		currentSpeed -= (speed/2) * delta * 2
 		#dir = transform.x * -speed  #byt till bromskrafter
 		
 func calculate_steering(delta):
@@ -42,5 +38,5 @@ func calculate_steering(delta):
 	rearWheel += dir * delta
 	frontWheel += dir.rotated(steerAngle) * delta
 	var newDir = (frontWheel - rearWheel).normalized()
-	dir = newDir * currentspeed #dir.length()
+	dir = newDir * currentSpeed #dir.length()
 	rotation = newDir.angle()
