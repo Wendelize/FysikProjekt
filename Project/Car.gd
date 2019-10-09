@@ -19,7 +19,7 @@ func get_input():
 		turn -= 1
 	steerAngle = turn * deg2rad(angle)
 	dir = Vector2.ZERO
-	if Input.is_action_pressed("accalerate"):
+	if Input.is_action_pressed("ui_up"):
 		dir = transform.x * speed
 
 func calculate_steering(delta):
