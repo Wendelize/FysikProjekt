@@ -8,6 +8,12 @@ var drag = -0.001
 var breaking = - 450
 var speedReverse = 250
 
+# new booiiis
+var Cd = 0.31
+var area = 1.94
+var mass = 1393
+var wheelRatio = 0.3186
+
 var acceleration = Vector2.ZERO
 var dir = Vector2.ZERO
 var steerAngle
@@ -23,7 +29,7 @@ func _physics_process(delta):
 
 func apply_friction():
 	#Slow the car down (add friction- and drag force)
-	if dir.length() < 10:
+	if dir.length() < 5:
 		dir = Vector2.ZERO
 	var frictionForce = dir * friction
 	var dragForce = dir * dir.length() * drag
