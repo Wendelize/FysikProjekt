@@ -9,10 +9,13 @@ var breaking = - 450
 var speedReverse = 250
 
 # new booiiis
-var Cd = 0.31
+var Cd = -0.31
 var area = 1.94
 var mass = 1393
 var wheelRatio = 0.3186
+var my = -0.015
+var grav = 9.82
+var rpm = 1000
 
 var acceleration = Vector2.ZERO
 var dir = Vector2.ZERO
@@ -25,15 +28,18 @@ func _physics_process(delta):
 	calculate_steering(delta)
 	dir += acceleration * delta
 	dir = move_and_slide(dir)
-	print(global_position)
+	print(dir.length()/3.6)
+
 
 func apply_friction():
 	#Slow the car down (add friction- and drag force)
 	if dir.length() < 5:
 		dir = Vector2.ZERO
-	var frictionForce = dir * friction
-	var dragForce = dir * dir.length() * drag
-	acceleration += frictionForce #+ dragForce
+	var frictionForce = dir.normalized() * my *mass * grav#dir * friction
+	var dragForce = dir.normalized() * 1/2 * 1.22* area * Cd * dir.length()*dir.length()
+	acceleration += frictionForce + dragForce
+	print("f = ", frictionForce, "d = " , dragForce)
+	#print(dragForce)
 
 func get_input():
 	#Turn or not turning
