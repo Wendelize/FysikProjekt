@@ -23,7 +23,7 @@ func _physics_process(delta):
 
 func apply_friction():
 	#Slow the car down (add friction- and drag force)
-	if dir.length() < 5:
+	if dir.length() < 10:
 		dir = Vector2.ZERO
 	var frictionForce = dir * friction
 	var dragForce = dir * dir.length() * drag
@@ -33,9 +33,9 @@ func get_input():
 	#Turn or not turning
 	var turn = 0
 	if Input.is_action_pressed("ui_right"):
-		turn += 1
+		turn = 1
 	if Input.is_action_pressed("ui_left"):
-		turn -= 1
+		turn = -1
 	steerAngle = turn * deg2rad(angle)
 	
 	#Accalerations forward and for breaking
