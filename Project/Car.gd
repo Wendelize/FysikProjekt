@@ -13,7 +13,8 @@ var Cd = -0.31
 var area = 1.94
 var mass = 1393
 var wheelRatio = 0.3186
-var my = -0.015
+var myStationary = -0.5
+var myMove = -0.2
 var grav = 9.82
 var rpm = 1000
 var we = 0
@@ -25,7 +26,8 @@ var Ff
 var Ftot
 
 var acceleration = Vector2.ZERO
-var dir = Vector2.ZERO
+var oldacceleration = Vector2.ZERO
+var dir = Vector2.RIGHT
 var steerAngle
 
 func _physics_process(delta):
@@ -33,21 +35,22 @@ func _physics_process(delta):
 	get_input()
 	apply_friction()
 	calculate_steering(delta)
-	#print(acceleration ," lolxd")
-	dir += acceleration * delta
+	#print(acceleration * delta ," speed")
+	dir += (acceleration * delta)
 	dir = move_and_slide(dir)
-	print(dir.length()*3.6)
-
+	#print("Speed: ", dir.length()*3.6)
+	print("speed2: ", (acceleration * delta*3.6).length())
 
 func apply_friction():
 	#Slow the car down (add friction- and drag force)
-	if dir.length() < 5:
-		dir = Vector2.ZERO
-	Ff = dir.normalized() * my * grav  #dir * friction
+	#if dir.length() > 5:
 	Fd = dir.normalized() * 1/2 * 1.22* area * Cd * dir.length()*dir.length() / mass
+	if(dir.length() == 0):
+		Ff = dir.normalized() *myStationary * grav  #dir * friction
+	else:
+		Ff = dir.normalized() *myMove * grav  #dir * friction
 	acceleration +=  Fd + Ff
-	#print("f = ", Ff, "d = " , Fd)
-	#print(dragForce)
+	print("motstånd: ",Ff.length())
 
 func get_input():
 	#Turn or not turning
@@ -60,9 +63,7 @@ func get_input():
 	
 	#Omega shit rpm
 	#rpm = (dir.length() * 60 * 2.2 * 3.44) / (2 * PI * wheelRatio)
-
 	if(rpm <= 1000):
-		rpm = 1000
 		Te = 220
 	elif(rpm < 4600):
 		Te = 0.025 * rpm + 195
@@ -73,21 +74,22 @@ func get_input():
 		
 	we = (2*PI*rpm)/60
 	
-	Tw = Te * 3.2 * 3.44
+	Tw = Te * 2.2 * 3.44
 	Ft = Tw / wheelRatio
-	print("rpm : ",rpm, " speed m/s", dir.length())
-	#print("Ft : " , Ft)
-	
+	acceleration += (Ft/mass) * dir.normalized()
+	print("drag: ",((Ft/mass) * dir.normalized()).length())
+	#print("Ft : " , (Ft/mass) * dir.normalized())
+
 	#Accalerations forward and for breaking
 	if Input.is_action_pressed("ui_up"):
-		we += (2*PI*rpm)/60
-		rpm += 100
+		rpm += 10
 		#acceleration = transform.x * power
-		acceleration += (Ft/mass) * transform.x
+
 
 	if Input.is_action_pressed("ui_down"):
-		acceleration = transform.x * breaking
-	print(acceleration , " acc")
+		rpm -= 10
+		#acceleration = transform.x * breaking
+	print(rpm , " RPM")
 	#Animations
 	if dir.length() > 0:
 		$AnimatedSprite.play("Forward")
