@@ -27,7 +27,7 @@ func apply_friction():
 		dir = Vector2.ZERO
 	var frictionForce = dir * friction
 	var dragForce = dir * dir.length() * drag
-	acceleration += dragForce + frictionForce
+	acceleration += frictionForce #+ dragForce
 
 func get_input():
 	#Turn or not turning
