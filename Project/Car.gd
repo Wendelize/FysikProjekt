@@ -23,33 +23,33 @@ var Ft
 var Fd
 var Ff
 var Ftot
+var time = 0
 
 var acceleration = Vector2.ZERO
-var dir = Vector2.ZERO
+var velocity = Vector2.ZERO
 var steerAngle
 
 func _physics_process(delta):
 	acceleration = Vector2.ZERO
-	get_input()
+	get_input(delta)
 	apply_friction()
 	calculate_steering(delta)
-	#print(acceleration ," lolxd")
-	dir += acceleration * delta
-	dir = move_and_slide(dir)
-	print(dir.length()*3.6)
+	print("Time : " , time )
+	velocity += acceleration * time
+	velocity = move_and_slide(velocity)
+	print("Velocity (km/h): " ,velocity.length() * 3.6)
 
 
 func apply_friction():
 	#Slow the car down (add friction- and drag force)
-	if dir.length() < 5:
-		dir = Vector2.ZERO
-	Ff = dir.normalized() * my * grav  #dir * friction
-	Fd = dir.normalized() * 1/2 * 1.22* area * Cd * dir.length()*dir.length() / mass
+	if velocity.length() < 5:
+		velocity = Vector2.ZERO
+	Ff = velocity.normalized() * my * grav  
+	Fd = velocity.normalized() * 1/2 * 1.22* area * Cd * (velocity.length()*velocity.length()) / mass
 	acceleration +=  Fd + Ff
 	#print("f = ", Ff, "d = " , Fd)
-	#print(dragForce)
 
-func get_input():
+func get_input(delta):
 	#Turn or not turning
 	var turn = 0
 	if Input.is_action_pressed("ui_right"):
@@ -58,9 +58,9 @@ func get_input():
 		turn = -1
 	steerAngle = turn * deg2rad(angle)
 	
-	#Omega shit rpm
-	#rpm = (dir.length() * 60 * 2.2 * 3.44) / (2 * PI * wheelRatio)
-
+	#Calculations for Ft, Tw, Te, rpm
+	rpm = (velocity.length() * 60 * 3.82 * 3.44) / (2 * PI * wheelRatio)
+	print("RPM: ", rpm)
 	if(rpm <= 1000):
 		rpm = 1000
 		Te = 220
@@ -75,25 +75,28 @@ func get_input():
 	
 	Tw = Te * 3.2 * 3.44
 	Ft = Tw / wheelRatio
-	print("rpm : ",rpm, " speed m/s", dir.length())
-	#print("Ft : " , Ft)
+	#print("Te : " , Te)
+	print("rpm : ",rpm)
+	print("Velocity (m/s) : ", velocity.length())
+	print("Ft : " , Ft)
 	
 	#Accalerations forward and for breaking
 	if Input.is_action_pressed("ui_up"):
-		we += (2*PI*rpm)/60
-		rpm += 100
-		#acceleration = transform.x * power
+		time += delta
 		acceleration += (Ft/mass) * transform.x
+	else:
+		time = 0
 
 	if Input.is_action_pressed("ui_down"):
 		acceleration = transform.x * breaking
-	print(acceleration , " acc")
+		
+	print(" Acceleration : ", acceleration )
 	#Animations
-	if dir.length() > 0:
+	if velocity.length() > 0:
 		$AnimatedSprite.play("Forward")
-	if dir.length() < 0:
+	if velocity.length() < 0:
 		$AnimatedSprite.play("Backwards")
-	if dir.length() == 0:
+	if velocity.length() == 0:
 		$AnimatedSprite.stop()
 	if turn > 0:
 		$AnimatedSprite.play("Turn")
@@ -107,14 +110,14 @@ func calculate_steering(delta):
 	#Location of front- & rear wheel
 	var rearWheel = position - transform.x * wheelDist / 2.0
 	var frontWheel = position + transform.x * wheelDist / 2.0
-	rearWheel += dir * delta
-	frontWheel += dir.rotated(steerAngle) * delta
+	rearWheel += velocity * delta
+	frontWheel += velocity.rotated(steerAngle) * delta
 	
 	#Calculating our new dir
 	var newDir = (frontWheel - rearWheel).normalized()
-	var d = newDir.dot(dir.normalized())
+	var d = newDir.dot(velocity.normalized())
 	if d > 0:
-		dir = newDir * dir.length()
+		velocity = newDir * velocity.length()
 	if d < 0:
-		dir = -newDir *min(dir.length(), speedReverse)
+		velocity -newDir *min(velocity.length(), speedReverse)
 	rotation = newDir.angle()
