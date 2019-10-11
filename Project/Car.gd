@@ -5,7 +5,7 @@ var angle = 15
 var power = 800
 var friction = -0.9
 var drag = -0.001
-var breaking = - 450
+var breaking = - 10
 var speedReverse = 250
 
 # new booiiis
@@ -29,6 +29,7 @@ var acceleration = Vector2.ZERO
 var oldacceleration = Vector2.ZERO
 var dir = Vector2.RIGHT
 var steerAngle
+var speed = Vector2.ZERO
 
 func _physics_process(delta):
 	acceleration = Vector2.ZERO
@@ -36,10 +37,11 @@ func _physics_process(delta):
 	apply_friction()
 	calculate_steering(delta)
 	#print(acceleration * delta ," speed")
-	dir += (acceleration * delta)
+	speed += acceleration * delta
+	dir = dir*(speed) * delta
 	dir = move_and_slide(dir)
 	#print("Speed: ", dir.length()*3.6)
-	print("speed2: ", (acceleration * delta*3.6).length())
+	print("speed2: ", dir.length()*3.6)
 
 func apply_friction():
 	#Slow the car down (add friction- and drag force)
@@ -64,6 +66,7 @@ func get_input():
 	#Omega shit rpm
 	#rpm = (dir.length() * 60 * 2.2 * 3.44) / (2 * PI * wheelRatio)
 	if(rpm <= 1000):
+		rpm = 1000
 		Te = 220
 	elif(rpm < 4600):
 		Te = 0.025 * rpm + 195
@@ -74,7 +77,7 @@ func get_input():
 		
 	we = (2*PI*rpm)/60
 	
-	Tw = Te * 2.2 * 3.44
+	Tw = Te * 3.2 * 3.44
 	Ft = Tw / wheelRatio
 	acceleration += (Ft/mass) * dir.normalized()
 	print("drag: ",((Ft/mass) * dir.normalized()).length())
@@ -82,13 +85,14 @@ func get_input():
 
 	#Accalerations forward and for breaking
 	if Input.is_action_pressed("ui_up"):
-		rpm += 10
+		rpm += 20
+	else:
+		rpm -= 20
 		#acceleration = transform.x * power
 
 
 	if Input.is_action_pressed("ui_down"):
-		rpm -= 10
-		#acceleration = transform.x * breaking
+		acceleration = transform.x * breaking
 	print(rpm , " RPM")
 	#Animations
 	if dir.length() > 0:
