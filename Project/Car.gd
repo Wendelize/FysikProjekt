@@ -30,7 +30,8 @@ var we = 0 # Rotationspeed of the engine
 var Teb = 0 # Torque engine braking
 var muBraking = 0.74 # Engine braking coefficient
 var accelerationBraking = -5.0 # m/s^2. Calculated with existing data and a = -v0^2 / 2x. Though estimated for he car.
- 
+var direction = Vector2.RIGHT 
+
 func determineTorque(rpm):
 	if (rpm <= 1000):
 		Te = 220
@@ -72,7 +73,7 @@ func determineTotalForce(currentGearRatio, currentVelocity):
 	determineFriction()
 	determineDrag(currentVelocity)
 	totalForce = (Tw / wheelRadius) - Fr - Fd
-	print("Tot F : ", totalForce)
+	#print("Tot F : ", totalForce)
    
 func determineAcceleration(currentGearRatio, velocityInput):
 	determineTotalForce(currentGearRatio, velocityInput)
@@ -113,8 +114,8 @@ func determineEngingeBraking(rpm):
 	Teb = muBraking * (rpm / 60)
  
 # Old variables:
-var wheelDist = 70
-var angle = 15
+var wheelDist = 50
+var angle = 30
 var power = 800
 var friction = -0.9
 var drag = -0.001
@@ -134,6 +135,7 @@ func _physics_process(delta):
 	
 	determineEngingeBraking(currentOmega)
 	determineTopSpeedRedline(gearRatios[currentGear])
+	print("Tot F : ", totalForce)
 	print("Current acc: ", currentAcceleration)
 	print("Current velocity: ", currentVelocity)
 	print("Current RPM: ", currentOmega)
@@ -142,7 +144,8 @@ func _physics_process(delta):
 	print("Current top speed: ", currentTopSpeedRedline)
 	print("FD : " , Fd)
 	print("Ff : " , Fr ) 
-	velocity = move_and_slide(velocity)
+
+	move_and_slide(currentVelocity * direction.normalized())
 	print("----- ", global_position, " -----")
  
 func apply_friction():
@@ -164,7 +167,7 @@ func get_input(delta):
    
 #Accalerations forward and for breaking
 	if Input.is_action_pressed("ui_up"):
-		determineCurrentVelocity(currentOmega, gearRatios[currentGear], currentVelocity, delta)
+		#determineCurrentVelocity(currentOmega, gearRatios[currentGear], currentVelocity, delta)
         #determineAcceleration(gearRatios[0], currentVelocity)
 		acceleration = transform.x * currentAcceleration #transform.x * power
 		determineTopSpeedRedline(gearRatios[currentGear])
@@ -174,9 +177,9 @@ func get_input(delta):
 		if(currentOmega > 1000):
         # Fake engine braking...
 			currentOmega -= 150
-			determineCurrentVelocity(currentOmega, gearRatios[currentGear], currentVelocity, delta)
 		else:
 			currentOmega = 1000
+	determineCurrentVelocity(currentOmega, gearRatios[currentGear], currentVelocity, delta)
 	if Input.is_action_pressed("ui_down"):
 		acceleration = transform.x * accelerationBraking
 	
@@ -205,19 +208,18 @@ func get_input(delta):
 		$AnimatedSprite.play("Turn")
 		$AnimatedSprite.flip_h = true
 
-
 func calculate_steering(delta):
 	#Location of front- & rear wheel
 	var rearWheel = position - transform.x * wheelDist / 2.0
 	var frontWheel = position + transform.x * wheelDist / 2.0
-	rearWheel += velocity * delta
-	frontWheel += velocity.rotated(steerAngle) * delta
+	rearWheel += direction.normalized() *currentVelocity * delta
+	frontWheel += direction.normalized().rotated(steerAngle)* currentVelocity * delta
 	
 	#Calculating our new dir
 	var newDir = (frontWheel - rearWheel).normalized()
-	var d = newDir.dot(velocity.normalized())
+	var d = newDir.dot(direction.normalized())
 	if d > 0:
-		velocity = newDir * velocity.length()
+		direction = newDir * currentVelocity
 	if d < 0:
-		velocity -newDir *min(velocity.length(), speedReverse)
+		direction = -newDir *min(currentVelocity, -20)
 	rotation = newDir.angle()
