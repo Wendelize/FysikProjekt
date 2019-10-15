@@ -71,7 +71,7 @@ func determineTotalForce(currentGearRatio, currentVelocity):
 	determineTw(currentGearRatio)
 	determineFriction()
 	determineDrag(currentVelocity)
-	totalForce += (Tw / wheelRadius) - Fr - Fd
+	totalForce = (Tw / wheelRadius) - Fr - Fd
 	print("Tot F : ", totalForce)
    
 func determineAcceleration(currentGearRatio, velocityInput):
@@ -87,7 +87,7 @@ func determineEnginePower(rpm):
 	Pe = Te * we # Poweer of the engine = Torque of the engine * rotational speed of engine
    
 func determineOmegaE(velocity, currentGearRatio):
-	currentOmega = (velocity * 60 * currentGearRatio * G) / (2 * PI * (wheelRadius * wheelRadius))
+	#currentOmega = (velocity * 60 * currentGearRatio * G) / (2 * PI * (wheelRadius))
 	if (currentOmega > 7200):
 		currentOmega = 7200
  
@@ -168,17 +168,18 @@ func get_input(delta):
         #determineAcceleration(gearRatios[0], currentVelocity)
 		acceleration = transform.x * currentAcceleration #transform.x * power
 		determineTopSpeedRedline(gearRatios[currentGear])
-		if (currentOmega <= 7200 && currentVelocity <= currentTopSpeedRedline):
+		if (currentOmega < 7200 && currentVelocity <= currentTopSpeedRedline):
 			currentOmega += 150
+	else:
+		if(currentOmega > 1000):
+        # Fake engine braking...
+			currentOmega -= 150
+			determineCurrentVelocity(currentOmega, gearRatios[currentGear], currentVelocity, delta)
+		else:
+			currentOmega = 1000
 	if Input.is_action_pressed("ui_down"):
 		acceleration = transform.x * accelerationBraking
 	
-	if(currentOmega > 1000):
-        # Fake engine braking...
-		currentOmega -= 150
-		determineCurrentVelocity(currentOmega, gearRatios[currentGear], currentVelocity, delta)
-	else:
-		currentOmega = 1000
    
 	if Input.is_action_just_pressed("ui_select"):
 		if (currentGear < 5):
