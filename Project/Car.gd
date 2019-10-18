@@ -1,5 +1,5 @@
 extends KinematicBody2D
- 
+
 # Porsche Boxter S specific variables. Can be changed to arrays to account for more than one car:
 var gearRatios = [3.82, 2.20, 1.52, 1.22, 1.02, 0.84] # gk
 var currentGear = 0
@@ -7,7 +7,7 @@ var numberOfGears = 6
 var G = 3.44 # Final drive ratio
 var wheelRadius = 0.3186 # rw
 var omegaRedline = 7200 # Highest possible rpm.
-var currentOmega = 1000 # RPM
+var currentOmega = 0 # RPM, 0 at start
 var Cd = 0.31 # Drag-coefficient
 var area = 1.94 # Frontal area of Porsche Boxter S
 var mu = 0.015 # Coefficient of rolling friction
@@ -30,8 +30,14 @@ var we = 0 # Rotationspeed of the engine
 var Teb = 0 # Torque engine braking
 var muBraking = 0.74 # Engine braking coefficient
 var accelerationBraking = -5.0 # m/s^2. Calculated with existing data and a = -v0^2 / 2x. Though estimated for he car.
- 
-func determineTorque(rpm):
+var maxBackingSpeed = -20
+
+# ATT FIXA:
+# * HUR ÖKAR RPM:ET MED GASEN? (Runge-Kutta)
+# * determineTopSpeed()
+# * I get_input() ska funktioner placeras i rätt ordning, t.ex kontrollera så att rpm:et är rätt för nedväxling...
+
+func determineTorque(rpm): #OK!
 	if (rpm <= 1000):
 		Te = 220
 		b = 0
@@ -44,74 +50,103 @@ func determineTorque(rpm):
 		Te = -0.032 * rpm + 457.2
 		b = -0.032
 		d = 457.2
- 
-func determineTopSpeedRedline(currentGearRatio):
-	currentTopSpeedRedline = (2 * PI * wheelRadius * omegaRedline) / (60 * currentGearRatio * G)
-   
-func determineTopSpeed(currentGearRatio):
+		
+func determineTopSpeed(currentGearRatio, currentOmega): #INTE OK!
 	determineTorque(currentOmega)
-# Float variablerna strular och avrundas till 0...
-	var c1 = -(1 / 2) * (Cd * airDensity * area) / mass
+	# Float variablerna strular och avrundas till 0...
+	var c1 = -0.5 * (Cd * airDensity * area) / mass
 	var c2 = (60 * (currentGearRatio * currentGearRatio) * (G * G) * b) / (2 * PI * mass * (wheelRadius * wheelRadius))
 	var c3 = ((currentGearRatio * G * d) / (mass * wheelRadius)) - (mu * gravitation)
-	currentTopSpeed = min((-c2 + sqrt((c2 * c2) - 4 * (c1 * c3))), (-c2 - sqrt((c2 * c2) - 4 * (c1 * c3)))) / (2 * c1)
-# Keep an eye on this... Might be max instead of min...
-   
-func determineDrag(currentVelocity):
-	Fd = 0.5 * Cd * airDensity * (currentVelocity * currentVelocity) * area 
- 
-func determineFriction():
+	
+	var root = sqrt((c2 * c2) - 4 * (c1 * c3))
+	var speed1 = (-c2 + root) / (2 * c1)
+	var speed2 = (-c2 - root) / (2 * c1)
+	
+	currentTopSpeed = max(speed1, speed2)
+	
+	# currentTopSpeed = max(((-c2 + sqrt((c2 * c2) - 4 * (c1 * c3))) / (2 * c1)), ((-c2 - sqrt((c2 * c2) - 4 * (c1 * c3))) / (2 * c1)))
+	# Keep an eye on this... Might be max instead of min...
+	
+func determineTopSpeedRedline(currentGearRatio): #OK!
+	currentTopSpeedRedline = (2 * PI * wheelRadius * omegaRedline) / (60 * currentGearRatio * G)
+	
+func determineDrag(currentVelocity): #OK!
+	Fd = 0.5 * Cd * airDensity * (currentVelocity * currentVelocity) * area
+
+func determineFriction(): #OK!
 	Fr = mu * mass * gravitation * cos(0)
-   
-func determineTw(currentGearRatio):
+	
+func determineTw(currentGearRatio): #SEEMS OK, DEPENDS ON RPM
 	determineTorque(currentOmega)
 	Tw = Te * currentGearRatio * G
-   
-func determineTotalForce(currentGearRatio, currentVelocity):
+	
+func determineTotalForce(currentGearRatio, currentVelocity): #OK!
 	determineTw(currentGearRatio)
 	determineFriction()
 	determineDrag(currentVelocity)
-	totalForce += (Tw / wheelRadius) - Fr - Fd
-	print("Tot F : ", totalForce)
-   
-func determineAcceleration(currentGearRatio, velocityInput):
+	totalForce = (Tw / wheelRadius) - Fr - Fd
+	
+func determineAcceleration(currentGearRatio, velocityInput): #SEEMS OK, DEPENDS ON RPM DOE?
 	determineTotalForce(currentGearRatio, velocityInput)
 	currentAcceleration = totalForce / mass
-   
-func determineWe(rpm):
+	
+func determineWe(rpm): #OK!
 	we = (2 * PI * rpm) / 60
-   
-func determineEnginePower(rpm):
+	
+func determineEnginePower(rpm): #OK!
 	determineTorque(rpm)
 	determineWe(rpm)
-	Pe = Te * we # Poweer of the engine = Torque of the engine * rotational speed of engine
-   
-func determineOmegaE(velocity, currentGearRatio):
-	currentOmega = (velocity * 60 * currentGearRatio * G) / (2 * PI * (wheelRadius * wheelRadius))
-	if (currentOmega > 7200):
-		currentOmega = 7200
- 
-func determineCurrentVelocity(rpm, currentGearRatio, velocity, delta):
-	if (currentVelocity > currentTopSpeedRedline):
-		currentVelocity = currentTopSpeedRedline
-		currentAcceleration = 0
-	else:
-		determineAcceleration(currentGearRatio, velocity)
-		currentVelocity = currentVelocity + currentAcceleration * delta
-       
-	determineOmegaE(currentVelocity, currentGearRatio)
-    #currentVelocity = (wheelRadius * 2 * PI * rpm) / (60 * currentGearRatio * G)
-   
-func rpmAfterShift(currentGearRatio, newGearRatio):
+	Pe = Te * we # Power of the engine = Torque of the engine * rotational speed of engine
+	
+func determineOmegaE(velocity, currentGearRatio): #OK!
+	currentOmega = (velocity * 60 * currentGearRatio * G) / (2 * PI * wheelRadius)
+
+func determineCurrentVelocity(rpm, currentGearRatio): #OK!
+	currentVelocity = (wheelRadius * 2 * PI * rpm) / (60 * currentGearRatio * G)
+	determineAcceleration(currentGearRatio, currentVelocity)
+	
+func rpmAfterShift(currentGearRatio, newGearRatio): #OK!
 	currentOmega = currentOmega * (newGearRatio / currentGearRatio)
 	if (newGearRatio < currentGearRatio):
 		currentGear += 1
-	else:
+	elif (currentOmega < 1000):
+		print("TOO LOW OMEGA FOR VEXLING, FUCK YOU, NO VEXLING! KEEP OMEGA AND WEXEL")
 		currentGear -= 1
-   
-func determineEngingeBraking(rpm):
+	
+func determineEngingeBraking(rpm): #OK!
 	Teb = muBraking * (rpm / 60)
- 
+	
+# TESTING:
+func determineGas(delta, input):
+	determineTopSpeedRedline(gearRatios[currentGear])
+	
+	if (currentVelocity < currentTopSpeedRedline && input == "ui_up"):
+		currentVelocity = currentVelocity + currentAcceleration * delta # Acceleration
+		determineOmegaE(currentVelocity, gearRatios[currentGear])
+		determineAcceleration(gearRatios[currentGear], currentVelocity)
+		
+	elif (currentVelocity > maxBackingSpeed && input == "ui_down"):
+		currentVelocity = currentVelocity - currentAcceleration * delta # Active braking
+		determineOmegaE(currentVelocity, gearRatios[currentGear])
+		determineAcceleration(gearRatios[currentGear], currentVelocity)
+		
+	else:
+		determineEngingeBraking(currentOmega) # The engine braking depend on the rpm
+		var brakeForce = -Teb / wheelRadius # Like the torque forward of the engine but opposite :) 
+		determineDrag(currentVelocity) # Drag affects the braking as well and needs to be updated based on currentVelocity
+		var engineBraking = (brakeForce - Fr - Fd) / mass # acceleration of engine braking
+		if (currentVelocity > 0):
+			currentVelocity = currentVelocity + engineBraking * delta # Enginebraking
+			determineOmegaE(currentVelocity, gearRatios[currentGear])
+			determineAcceleration(gearRatios[currentGear], currentVelocity)
+		elif (currentVelocity < 0):
+			currentVelocity = currentVelocity - engineBraking * delta # Enginebraking
+			determineOmegaE(currentVelocity, gearRatios[currentGear])
+			determineAcceleration(gearRatios[currentGear], currentVelocity)
+		print("engineBraking: ", engineBraking)
+		
+	
+
 # Old variables:
 var wheelDist = 70
 var angle = 15
@@ -120,66 +155,39 @@ var friction = -0.9
 var drag = -0.001
 var breaking = - 450
 var speedReverse = 250
- 
+
 var acceleration = Vector2.ZERO
 var velocity = Vector2.ZERO
 var steerAngle
- 
+
 func _physics_process(delta):
 	acceleration = Vector2.ZERO
 	get_input(delta)
-    # apply_friction()
 	calculate_steering(delta)
-	velocity += acceleration * delta
 	
-	determineEngingeBraking(currentOmega)
-	determineTopSpeedRedline(gearRatios[currentGear])
-	print("Current acc: ", currentAcceleration)
-	print("Current velocity: ", currentVelocity)
-	print("Current RPM: ", currentOmega)
-	print("Engine braking: ", Teb)
-	print("Current gear: ", currentGear)
-	print("Current top speed: ", currentTopSpeedRedline)
-	print("FD : " , Fd)
-	print("Ff : " , Fr ) 
-	velocity = move_and_slide(velocity)
-	print("----- ", global_position, " -----")
- 
-func apply_friction():
-#Slow the car down (add friction- and drag force)
-	if velocity.length() < 5:
-		velocity = Vector2.ZERO
-	var frictionForce = velocity * friction
-	var dragForce = velocity * velocity.length() * drag
-	acceleration += frictionForce #+ dragForce
- 
-func get_input(delta):
-#Turn or not turning
+	print("v = ", currentVelocity, " acc = ", currentAcceleration, " rpm = ", currentOmega, " gear = ", currentGear)
+	velocity = move_and_slide(22 * currentVelocity * transform.x) # * 22 for more realistic movement in the scale of the sprites
+
+func get_input(delta): #FIX
+	#Turn or not turning
 	var turn = 0
 	if Input.is_action_pressed("ui_right"):
 		turn += 1
 	if Input.is_action_pressed("ui_left"):
 		turn -= 1
 	steerAngle = turn * deg2rad(angle)
-   
-#Accalerations forward and for breaking
-	if Input.is_action_pressed("ui_up"):
-		determineCurrentVelocity(currentOmega, gearRatios[currentGear], currentVelocity, delta)
-        #determineAcceleration(gearRatios[0], currentVelocity)
-		acceleration = transform.x * currentAcceleration #transform.x * power
-		determineTopSpeedRedline(gearRatios[currentGear])
-		if (currentOmega <= 7200 && currentVelocity <= currentTopSpeedRedline):
-			currentOmega += 150
-	if Input.is_action_pressed("ui_down"):
-		acceleration = transform.x * accelerationBraking
 	
-	if(currentOmega > 1000):
-        # Fake engine braking...
-		currentOmega -= 150
-		determineCurrentVelocity(currentOmega, gearRatios[currentGear], currentVelocity, delta)
+	#Accalerations forward and for breaking
+	if Input.is_action_pressed("ui_up"):
+		if (currentOmega == 0): # start of engine
+			currentOmega = 1000
+		determineGas(delta, "ui_up")	
+	elif Input.is_action_pressed("ui_down"):
+		determineGas(delta, "ui_down")
 	else:
-		currentOmega = 1000
-   
+		determineGas(delta, "")
+	
+	# Gear up or down
 	if Input.is_action_just_pressed("ui_select"):
 		if (currentGear < 5):
 			rpmAfterShift(gearRatios[currentGear], gearRatios[currentGear + 1])
@@ -187,9 +195,9 @@ func get_input(delta):
 	if Input.is_action_just_pressed("ui_cancel"):
 		if (currentGear > 0):
 			rpmAfterShift(gearRatios[currentGear], gearRatios[currentGear - 1])
+			currentGear = currentGear - 1
 			determineTopSpeedRedline(gearRatios[currentGear])
-	
-	#print(" Acceleration : ", acceleration )
+		
 	#Animations
 	if velocity.length() > 0:
 		$AnimatedSprite.play("Forward")
@@ -206,17 +214,17 @@ func get_input(delta):
 
 
 func calculate_steering(delta):
-	#Location of front- & rear wheel
+	# Location of front- & rear wheel
 	var rearWheel = position - transform.x * wheelDist / 2.0
 	var frontWheel = position + transform.x * wheelDist / 2.0
 	rearWheel += velocity * delta
 	frontWheel += velocity.rotated(steerAngle) * delta
 	
-	#Calculating our new dir
-	var newDir = (frontWheel - rearWheel).normalized()
-	var d = newDir.dot(velocity.normalized())
+	# Calculating our new velocity
+	var newVelocity = (frontWheel - rearWheel).normalized()
+	var d = newVelocity.dot(velocity.normalized())
 	if d > 0:
-		velocity = newDir * velocity.length()
+		velocity = newVelocity * velocity.length()
 	if d < 0:
-		velocity -newDir *min(velocity.length(), speedReverse)
-	rotation = newDir.angle()
+		velocity = -newVelocity *min(velocity.length(), speedReverse)
+	rotation = newVelocity.angle()
