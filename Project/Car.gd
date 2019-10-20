@@ -3,6 +3,7 @@ extends KinematicBody2D
 # Porsche Boxter S specific variables. Can be changed to arrays to account for more than one car:
 var gearRatios = [3.82, 2.20, 1.52, 1.22, 1.02, 0.84] # gk
 var currentGear = 0
+# warning-ignore:unused_class_variable
 var numberOfGears = 6
 var G = 3.44 # Final drive ratio
 var wheelRadius = 0.3186 # rw
@@ -160,9 +161,13 @@ func determineGas(delta, input):
 # Old variables:
 var wheelDist = 70
 var angle = 15
+# warning-ignore:unused_class_variable
 var power = 800
+# warning-ignore:unused_class_variable
 var friction = -0.9
+# warning-ignore:unused_class_variable
 var drag = -0.001
+# warning-ignore:unused_class_variable
 var breaking = - 450
 var speedReverse = 250
 var tractionFast = 0.001
@@ -252,3 +257,30 @@ func calculate_steering(delta):
 		velocity = -newVelocity *min(currentVelocity, speedReverse)
 
 	rotation = newVelocity.angle()
+
+#Runge-Kutta aka. runka-kuken
+func calc_dxdy(x,y):
+	var calc = (x - y)/ 2
+	return calc
+
+func runge_kutta(x0, y0, x, h):
+	#nr of iterations
+	var n = ((x - x0)/h)
+	var k1 
+	var k2
+	var k3
+	var k4
+	var y = y0;
+# warning-ignore:unused_variable
+	for i in range(n):
+		#runge-kutta find next y
+		k1 = h * calc_dxdy(x0,y)
+		k2 = h * calc_dxdy(x0 + 0.5 * h, y + 0.5 * k1)
+		k3 = h * calc_dxdy(x0 + 0.5 * h, y + 0.5 * k2)
+		k4 = h * calc_dxdy(x0 + h, y + k3)
+		#uppdate next y
+		var t = 1 / 6
+		y = y + t * (k1 + (2 * k2) + (2 * k3) + k4)
+		#uppdate next x
+		x0 = x0 + h
+	return y
