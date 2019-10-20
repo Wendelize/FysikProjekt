@@ -170,7 +170,6 @@ func _physics_process(delta):
 	acceleration = Vector2.ZERO
 	get_input(delta)
 	calculate_steering(delta)
-	
 	print("v = ", currentVelocity, " acc = ", currentAcceleration, " rpm = ", currentOmega, " gear = ", currentGear)
 	velocity = move_and_slide(22 * currentVelocity * transform.x) # * 22 for more realistic movement in the scale of the sprites
 
