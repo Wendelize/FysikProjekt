@@ -97,7 +97,7 @@ func determineEnginePower(rpm): #OK!
 	Pe = Te * we # Power of the engine = Torque of the engine * rotational speed of engine
 	
 func determineOmegaE(velocity, currentGearRatio): #OK!
-	currentOmega = (velocity * 60 * currentGearRatio * G) / (2 * PI * wheelRadius)
+	currentOmega = (abs(velocity) * 60 * currentGearRatio * G) / (2 * PI * wheelRadius)
 
 func determineCurrentVelocity(rpm, currentGearRatio): #OK!
 	currentVelocity = (wheelRadius * 2 * PI * rpm) / (60 * currentGearRatio * G)
@@ -178,8 +178,7 @@ func _physics_process(delta):
 	get_input(delta)
 	calculate_steering(delta)
 	#get_node(".../CanvasLayer/label").set_text("Velo: " + str(currentVelocity))
-	get_tree().get_root().get_node("CanvasLayer").set_text(str(currentVelocity))
-
+	#get_tree().get_root().get_node("CanvasLayer").set_text(str(currentVelocity))
 	#print("v = ", currentVelocity, " acc = ", currentAcceleration, " rpm = ", currentOmega, " gear = ", currentGear + 1)
 	print(velocity.normalized().length())
 	if(velocity.normalized().length() < 1):
