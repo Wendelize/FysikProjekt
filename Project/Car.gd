@@ -29,7 +29,7 @@ var Pe = 0 # Power of the engine
 var we = 0 # Rotationspeed of the engine
 var Teb = 0 # Torque engine braking
 var muBraking = 0.74 # Engine braking coefficient
-var accelerationBraking = -5.0 # m/s^2. Calculated with existing data and a = -v0^2 / 2x. Though estimated for he car.
+var accelerationBraking = -10.4 # m/s^2. Calculated with existing data and a = -v0^2 / 2x. Though estimated for he car.
 var maxBackingSpeed = -20
 
 # ATT FIXA:
@@ -120,7 +120,7 @@ func determineGas(delta, input):
 	if (currentGear == 5):
 		determineTopSpeed(gearRatios[5], currentOmega)
 		currentTopSpeedRedline = currentTopSpeed # In higher gears, aka 5th gear, we use the top speed with drag.
-		print(currentTopSpeedRedline)
+		#print(currentTopSpeedRedline)
 	
 	if (currentVelocity < currentTopSpeedRedline && input == "ui_up"):
 		if(currentVelocity < 0):
@@ -153,7 +153,7 @@ func determineGas(delta, input):
 			currentVelocity = currentVelocity - engineBraking * delta # Enginebraking
 			determineOmegaE(currentVelocity, gearRatios[currentGear])
 			determineAcceleration(gearRatios[currentGear], currentVelocity)
-		print("engineBraking: ", engineBraking)
+		#print("engineBraking: ", engineBraking)
 		
 	
 
@@ -165,7 +165,10 @@ var friction = -0.9
 var drag = -0.001
 var breaking = - 450
 var speedReverse = 250
-
+var tractionFast = 0.001
+var tractionSlow = 0.7
+var slipSpeed = 30
+var newVelocity = Vector2.ZERO
 var acceleration = Vector2.ZERO
 var velocity = Vector2.ZERO
 var steerAngle
@@ -174,10 +177,15 @@ func _physics_process(delta):
 	acceleration = Vector2.ZERO
 	get_input(delta)
 	calculate_steering(delta)
-	
-	print("v = ", currentVelocity, " acc = ", currentAcceleration, " rpm = ", currentOmega, " gear = ", currentGear + 1)
-	velocity = move_and_slide(12 * currentVelocity * transform.x) # * 12 for more realistic movement in the scale of the sprites
+	#get_node(".../CanvasLayer/label").set_text("Velo: " + str(currentVelocity))
+	get_tree().get_root().get_node("CanvasLayer").set_text(str(currentVelocity))
 
+	#print("v = ", currentVelocity, " acc = ", currentAcceleration, " rpm = ", currentOmega, " gear = ", currentGear + 1)
+	print(velocity.normalized().length())
+	if(velocity.normalized().length() < 1):
+		velocity = move_and_slide(8 * currentVelocity * transform.x)# * 12 for more realistic movement in the scale of the sprites
+	else: 
+		velocity = move_and_slide(8 * currentVelocity * velocity.normalized())# * 12 for more realistic movement in the scale of the sprites
 func get_input(delta): #FIX
 	#Turn or not turning
 	var turn = 0
@@ -231,10 +239,17 @@ func calculate_steering(delta):
 	frontWheel += velocity.rotated(steerAngle) * delta
 	
 	# Calculating our new velocity
-	var newVelocity = (frontWheel - rearWheel).normalized()
+	newVelocity = (frontWheel - rearWheel).normalized()
+
+	var traction = tractionSlow
+	if(currentVelocity > slipSpeed):
+
+		traction = tractionFast
+
 	var d = newVelocity.dot(velocity.normalized())
 	if d > 0:
-		velocity = newVelocity * velocity.length()
+		velocity = velocity.linear_interpolate(currentVelocity * newVelocity ,traction)
 	if d < 0:
-		velocity = -newVelocity *min(velocity.length(), speedReverse)
+		velocity = -newVelocity *min(currentVelocity, speedReverse)
+
 	rotation = newVelocity.angle()
