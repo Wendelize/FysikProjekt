@@ -32,9 +32,16 @@ var Teb = 0 # Torque engine braking
 var muBraking = 0.74 # Engine braking coefficient
 var accelerationBraking = -10.4 # m/s^2. Calculated with existing data and a = -v0^2 / 2x. Though estimated for he car.
 var maxBackingSpeed = -20
-
-# ATT FIXA:
-# * determineTopSpeed()
+var wheelDist = 70
+var angle = 15
+var breaking = - 450
+var speedReverse = 250
+var tractionFast = 0.001
+var tractionSlow = 0.7
+var slipSpeed = 30
+var newVelocity = Vector2.ZERO
+var velocity = Vector2.ZERO
+var steerAngle
 
 func determineTorque(rpm): #OK!
 	if (rpm <= 1000):
@@ -62,9 +69,6 @@ func determineTopSpeed(currentGearRatio, currentOmega): #INTE OK!
 	var speed2 = (-c2 - root) / (2 * c1)
 	
 	currentTopSpeed = max(speed1, speed2)
-	
-	# currentTopSpeed = max(((-c2 + sqrt((c2 * c2) - 4 * (c1 * c3))) / (2 * c1)), ((-c2 - sqrt((c2 * c2) - 4 * (c1 * c3))) / (2 * c1)))
-	# Keep an eye on this... Might be max instead of min...
 	
 func determineTopSpeedRedline(currentGearRatio): #OK!
 	currentTopSpeedRedline = (2 * PI * wheelRadius * omegaRedline) / (60 * currentGearRatio * G)
@@ -114,8 +118,7 @@ func rpmAfterShift(currentGearRatio, newGearRatio): #OK!
 	
 func determineEngingeBraking(rpm): #OK!
 	Teb = muBraking * (rpm / 60)
-	
-# TESTING:
+
 func determineGas(delta, input):
 	determineTopSpeedRedline(gearRatios[currentGear])
 	if (currentGear == 5):
@@ -154,42 +157,19 @@ func determineGas(delta, input):
 			currentVelocity = currentVelocity - engineBraking * delta # Enginebraking
 			determineOmegaE(currentVelocity, gearRatios[currentGear])
 			determineAcceleration(gearRatios[currentGear], currentVelocity)
-		#print("engineBraking: ", engineBraking)
-		
-	
-
-# Old variables:
-var wheelDist = 70
-var angle = 15
-# warning-ignore:unused_class_variable
-var power = 800
-# warning-ignore:unused_class_variable
-var friction = -0.9
-# warning-ignore:unused_class_variable
-var drag = -0.001
-# warning-ignore:unused_class_variable
-var breaking = - 450
-var speedReverse = 250
-var tractionFast = 0.001
-var tractionSlow = 0.7
-var slipSpeed = 30
-var newVelocity = Vector2.ZERO
-var acceleration = Vector2.ZERO
-var velocity = Vector2.ZERO
-var steerAngle
 
 func _physics_process(delta):
-	acceleration = Vector2.ZERO
 	get_input(delta)
 	calculate_steering(delta)
-	#get_node(".../CanvasLayer/label").set_text("Velo: " + str(currentVelocity))
-	#get_tree().get_root().get_node("CanvasLayer").set_text(str(currentVelocity))
-	#print("v = ", currentVelocity, " acc = ", currentAcceleration, " rpm = ", currentOmega, " gear = ", currentGear + 1)
+	
 	print(velocity.normalized().length())
+	
+	
 	if(velocity.normalized().length() < 1):
-		velocity = move_and_slide(8 * currentVelocity * transform.x)# * 12 for more realistic movement in the scale of the sprites
+		velocity = move_and_slide(8 * currentVelocity * transform.x) 
 	else: 
-		velocity = move_and_slide(8 * currentVelocity * velocity.normalized())# * 12 for more realistic movement in the scale of the sprites
+		velocity = move_and_slide(8 * currentVelocity * velocity.normalized()) 
+
 func get_input(delta): #FIX
 	#Turn or not turning
 	var turn = 0
@@ -234,7 +214,6 @@ func get_input(delta): #FIX
 		$AnimatedSprite.play("Turn")
 		$AnimatedSprite.flip_h = true
 
-
 func calculate_steering(delta):
 	# Location of front- & rear wheel
 	var rearWheel = position - transform.x * wheelDist / 2.0
@@ -258,7 +237,7 @@ func calculate_steering(delta):
 
 	rotation = newVelocity.angle()
 
-#Runge-Kutta aka. runka-kuken
+#Runge-Kutta 
 func calc_dxdy(x,y):
 	var calc = (x - y)/ 2
 	return calc
